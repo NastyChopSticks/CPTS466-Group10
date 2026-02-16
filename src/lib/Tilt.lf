@@ -1,0 +1,29 @@
+target C {
+  platform: "RP2040"
+}
+
+preamble {=
+  #include <math.h>
+=}
+
+reactor Tilt {
+  input x: float
+  input y: float
+  input z: float
+  
+  output pitch: float
+  output roll: float
+
+  reaction(x, y, z) -> pitch, roll {=
+    // Convert radians to degrees: 180 / PI
+    const float RAD_TO_DEG = 57.2957795131f;
+
+    // Pitch is rotation around the Y-axis (tilt forward/back)
+    // Roll is rotation around the X-axis (tilt side-to-side)
+    float p = atan2(x->value, z->value) * RAD_TO_DEG;
+    float r = atan2(y->value, z->value) * RAD_TO_DEG;
+
+    lf_set(pitch, p);
+    lf_set(roll, r);
+  =}
+}

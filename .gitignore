@@ -8,3 +8,7 @@ build/
 
 # MacOS junk
 .DS_Store
+
+flake.lock
+pico-sdk/
+src-gen/

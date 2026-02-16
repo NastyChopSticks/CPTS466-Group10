@@ -1,0 +1,38 @@
+target C {
+  platform: "RP2040",
+  single-threaded: true
+}
+
+import Accelerometer from "IMU.lf"
+import Display from "Display.lf"
+import Tilt from "Tilt.lf"
+
+main reactor {
+  a = new Accelerometer()
+  t_math = new Tilt()
+  d = new Display()
+  
+  timer t(0, 250 msec)
+
+  // Trigger the IMU to read every 250ms
+  reaction(t) -> a.trigger {=
+    lf_set(a.trigger, true);
+  =}
+
+  // Route raw g-data into the Tilt math reactor
+  a.x -> t_math.x
+  a.y -> t_math.y
+  a.z -> t_math.z
+
+  // Display the calculated angles
+  reaction(t_math.pitch, t_math.roll) -> d.line0, d.line1 {=
+    static char buf_p[17];
+    static char buf_r[17];
+
+    snprintf(buf_p, 17, "Pitch: %3.2f Deg", t_math.pitch->value);
+    snprintf(buf_r, 17, "Roll:  %3.2f Deg", t_math.roll->value);
+
+    lf_set(d.line0, buf_p);
+    lf_set(d.line1, buf_r);
+  =}
+}
