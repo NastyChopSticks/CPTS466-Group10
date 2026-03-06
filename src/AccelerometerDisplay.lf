@@ -43,6 +43,10 @@ main reactor {
     snprintf(buf1, 17, "y:%2.4f", a.y->value);
     snprintf(buf2, 17, "z:%2.4f", a.z->value);
 
+    
+
+    
+
     lf_set(d.line0, buf0);
     lf_set(d.line1, buf1);
     lf_set(d.line2, buf2);

@@ -29,8 +29,8 @@ main reactor {
     static char buf_p[17];
     static char buf_r[17];
 
-    snprintf(buf_p, 17, "Pitch: %3.2f Deg", t_math.pitch->value);
-    snprintf(buf_r, 17, "Roll:  %3.2f Deg", t_math.roll->value);
+    snprintf(buf_p, 17, "Pitch: %3.8f Deg", t_math.pitch->value);
+    snprintf(buf_r, 17, "Roll:  %3.8f Deg", t_math.roll->value);
 
     lf_set(d.line0, buf_p);
     lf_set(d.line1, buf_r);
