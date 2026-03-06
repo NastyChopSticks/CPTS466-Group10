@@ -1,0 +1,71 @@
+/**
+ * Blink the default LED on the
+ * <a href="https://www.pololu.com/docs/0J86">Pololu 3pi+ 2040 robot</a>.
+ * @author Abhi Gundrala
+ * @author Edward A. Lee
+ */
+
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true
+}
+
+import Display from "lib/Display.lf"
+
+preamble {=
+  #include <stdio.h>
+  #include <pico/stdlib.h>
+  #include <hardware/gpio.h>
+=}
+
+
+
+main reactor {
+  timer t(0, 250 ms)
+  d = new Display()
+  state led_on: bool = false
+  state counter: int = 0
+  reaction(startup) {=
+    
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_init(0);
+    //change GPIO_OUT -> GPIO_IN so we can read the pin
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_IN);
+    
+    gpio_set_dir(0, GPIO_IN);
+  =}
+
+    //button A is an accuator so it should be writing the GPIO 25 pin to high. so self->led_on == True when pressed?
+    //since both pins are mapped to the same place?
+  reaction(t) -> d.line0{=
+    bool button_c_is_pressed()
+    {
+        gpio_set_oeover(0, GPIO_OVERRIDE_LOW);
+        gpio_pull_up(0);
+        sleep_us(1);
+        bool r = !gpio_get(0);
+        gpio_set_oeover(0, GPIO_OVERRIDE_NORMAL);
+        return r;
+    }
+    static char buf0[17];
+    if(!gpio_get(PICO_DEFAULT_LED_PIN) == 1)
+    {
+        self->counter++;
+    }
+    if(button_c_is_pressed() == 1)
+    {
+        self->counter++;
+    }
+    if(!gpio_get(PICO_DEFAULT_LED_PIN) == 1 && button_c_is_pressed() == 1)
+    {
+        self->counter = 0;
+    }
+    snprintf(buf0, 17, "Button Count: %d\n", self->counter);
+    
+    lf_set(d.line0, buf0);
+
+  =}
+}
