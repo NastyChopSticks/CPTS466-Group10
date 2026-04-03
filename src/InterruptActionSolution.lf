@@ -13,15 +13,18 @@ preamble {=
   #include <stdio.h>
   #include "pico/stdlib.h"
   #include "hardware/gpio.h"
+  static void* action;
 static void my_gpio_callback(uint gpio, uint32_t event_mask)
 {
     printf("Arguments passed\n");
     printf("gpio: %d\n", gpio);
     printf("event_mask: %lu\n", (unsigned long) event_mask);
     printf("bool: true\n");
+    
+    lf_schedule(action, 0);
 }
 
-static void* action();
+
 
 =}
 
@@ -30,13 +33,29 @@ static void* action();
 main reactor {
   d = new Display()
   timer t(0, 250 ms)
+  physical action a;
   state counter: int = 0;
+  state previous_time: interval_t = 0;
 
-  reaction(startup){=
+  reaction(startup) -> a {=
     gpio_init(PICO_DEFAULT_LED_PIN);
     //change GPIO_OUT -> GPIO_IN so we can read the pin
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_IN);
+    action = a;
+
+    
   =}
+  reaction(a) {=
+    interval_t elapsed_time = lf_time_logical_elapsed();
+    printf("Elapsed time = %ld\n", elapsed_time);
+    printf("Previous time = %ld\n", self->previous_time);
+    interval_t calculated_time = elapsed_time - self->previous_time;
+    printf("calculated time %ld\n", calculated_time);
+    printf("Action triggered at logical time %ld nsec after last button press.\n", calculated_time);
+    self->previous_time = elapsed_time;
+    printf("New previous time = %ld\n", self->previous_time);
+    
+    =}
   reaction(t) -> d.line0{=
     static char buf0[17];
     if(!gpio_get(PICO_DEFAULT_LED_PIN) == 1)
