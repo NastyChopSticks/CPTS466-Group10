@@ -1,0 +1,44 @@
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true
+}
+
+import Display from "lib/Display.lf"
+import Encoders from "lib/Encoders.lf"
+import MotorsWithFeedback from "lib/MotorsWithFeedback.lf"
+
+preamble{=
+  #define WHEEL_CONSTANT 1.5875
+=}
+
+main reactor {
+  angleToDistance = new AngleToDistance()
+  timer t(0, 1 s)
+
+}
+
+// distance = (diameter / 2) X angle in radians
+reactor AngleToDistance {
+  
+  display = new Display()
+  encoder = new Encoders()
+  motorsWithFeedback = new MotorsWithFeedback()
+
+  reaction(encoder.left) -> display.line1 {=
+    static char buf[17];
+    float distance = WHEEL_CONSTANT * encoder.left->value
+    snprintf(buf, 17, "L: %10s", distance);
+    lf_set(display.line1, buf);
+  =}
+
+  reaction(encoder.right) -> display.line2 {=
+    static char buf[17];
+    float distance = WHEEL_CONSTANT * encoder.right->value
+    snprintf(buf, 17, "R: %10s", distance);
+    lf_set(display.line1, buf);
+  =}
+
+}
