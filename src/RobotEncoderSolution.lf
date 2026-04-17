@@ -11,7 +11,7 @@ import Encoders from "lib/Encoders.lf"
 import MotorsWithFeedback from "lib/MotorsWithFeedback.lf"
 
 preamble{=
-  #define WHEEL_CONSTANT 1.5875
+  #define WHEEL_RADIUS 1.5875
 =}
 
 main reactor {
@@ -20,7 +20,7 @@ main reactor {
 
 }
 
-// distance = (diameter / 2) X angle in radians
+// displacement = angle / radius
 reactor AngleToDistance {
   
   display = new Display()
@@ -29,14 +29,14 @@ reactor AngleToDistance {
 
   reaction(encoder.left) -> display.line1 {=
     static char buf[17];
-    float distance = WHEEL_CONSTANT * encoder.left->value
+    float distance = encoder.left->value / WHEEL_RADIUS
     snprintf(buf, 17, "L: %10s", distance);
     lf_set(display.line1, buf);
   =}
 
   reaction(encoder.right) -> display.line2 {=
     static char buf[17];
-    float distance = WHEEL_CONSTANT * encoder.right->value
+    float distance = encoder.right->value / WHEEL_RADIUS
     snprintf(buf, 17, "R: %10s", distance);
     lf_set(display.line1, buf);
   =}
