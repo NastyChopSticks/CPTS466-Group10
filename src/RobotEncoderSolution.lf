@@ -11,13 +11,16 @@ import Encoders from "lib/Encoders.lf"
 
 
 preamble{=
-  #define WHEEL_RADIUS 1.5875
+  #define WHEEL_CONSTANT 23 // derived experimentally
 =}
 
 main reactor {
+  
+  // TO DO: maybe need to keep track of left and right distance? And then call AngleToDistance when it changes
+
+
   angleToDistance = new AngleToDistance()
   timer t(0, 1 s)
-
   
 }
 
@@ -29,15 +32,14 @@ reactor AngleToDistance {
 
   reaction(encoder.left) -> display.line1 {=
     static char buf[17];
-    float distance = encoder.left->value / WHEEL_RADIUS;
+    float distance = encoder.left->value / WHEEL_CONSTANT;
     snprintf(buf, 17, "L: %10s", distance);
     lf_set(display.line1, buf);
   =}
 
   reaction(encoder.right) -> display.line2 {=
     static char buf[17];
-    float distance = encoder.right->value / WHEEL_RADIUS;
-    snprintf(buf, 17, "R: %10s", distance);
+    float distance = encoder.right->value / WHEEL_CONSTANT;
     lf_set(display.line2, buf);
   =}
 
