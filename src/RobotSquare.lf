@@ -1,0 +1,108 @@
+/**
+ * Display measurements from the gyroscope on the
+ * <a href="https://www.pololu.com/docs/0J86">Pololu 3pi+ 2040 robot</a> with integration so the
+ * result is in degrees since reset. The gyroscope is provided by an
+ * <a href="https://www.pololu.com/file/0J1899/lsm6dso.pdf">ST LMS6DSO inertial measurement
+ * unit</a>.
+ * @author Abhi Gundrala
+ * @author Edward A. Lee
+ */
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true
+}
+
+import Display from "lib/Display.lf"
+import GyroAngle from "lib/IMU.lf"
+import Motors from "lib/Motors.lf"
+
+reactor Robot {
+  input drive: bool      // Toggle mode.
+  output notify: string  // Notify of mode change.
+  motors = new Motors()
+  reaction(startup) -> notify {=
+    lf_set(notify, "INIT");
+  =}
+
+  initial mode STOPPED {
+    reaction(drive) -> motors.left_power, motors.right_power, reset(DRIVING), notify {=
+      if (drive->value) {
+        lf_set_mode(DRIVING);
+        lf_set(notify, "DRIVING");
+        lf_set(motors.left_power, 0.1f);
+        lf_set(motors.right_power, 0.1f);
+      }
+    =}
+  }
+
+  mode DRIVING {
+    reaction(drive) -> motors.left_power, motors.right_power, reset(STOPPED), notify {=
+      if (!drive->value) {
+        lf_set_mode(STOPPED);
+        lf_set(notify, "STOPPED");
+        lf_set(motors.left_power, 0.0f);
+        lf_set(motors.right_power, 0.0f);
+      }
+    =}
+  }
+  mode TURNING{
+    state target_value: float = 0.0;
+    state turning: bool = false;
+    reaction(drive) -> motors.left_power, motors.right_power, notify {=
+        if(!self->turning)
+        {
+            self->target = gyro.z + 90.0f;
+            self->turning = true;
+
+            lf_set(notify, "TURNING");
+            
+            
+            
+            lf_set(motors.left_power, 0.0f);
+            lf_set(motors.right_power, 0.1f);
+            
+            
+            
+        }
+    =}
+  }
+}
+
+
+main reactor {
+  display = new Display()
+  gyro = new GyroAngle()
+  timer t(0, 2 sec)
+  state drive: bool = false
+  state angle:float = 0.0
+  
+  robot = new Robot()
+  robot.notify -> display.line0
+  reaction(t) -> robot.drive, gyro.trigger{=
+    float target = gyro.z + 90;
+    lf_set(robot.drive, self->drive);
+    // Toggle the drive state variable for next time.
+    self->drive = !self->drive;
+  =}
+
+  reaction(gyro.x) -> display.line1 {=
+    static char buf[17];
+    snprintf(buf, 17, "x: %.1f", gyro.x->value);
+    lf_set(display.line1, buf);
+  =}
+
+  reaction(gyro.y) -> display.line2 {=
+    static char buf[17];
+    snprintf(buf, 17, "y: %.1f", gyro.y->value);
+    lf_set(display.line2, buf);
+  =}
+
+  reaction(gyro.z) -> display.line3 {=
+    static char buf[17];
+    snprintf(buf, 17, "z: %.1f", gyro.z->value);
+    lf_set(display.line3, buf);
+  =}
+}
