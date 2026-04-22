@@ -9,32 +9,51 @@ target C {
 import Display from "lib/Display.lf"
 import Encoders from "lib/Encoders.lf"
 
-preamble{=
-  #define WHEEL_CONSTANT 23 // derived experimentally
+preamble {=
+  #include <math.h>
+  #define PI 3.14159265
+  #define WHEEL_DIAMETER 3.175 // 3.175 cm
 =}
 
+reactor AngleToDistance {
+  input degrees: int32_t
+  output distance: float
+
+  reaction(degrees) -> distance {=
+    float dist = (degrees->value / 360.0) * PI * WHEEL_DIAMETER;
+    lf_set(distance, dist);
+  =}
+}
+
 main reactor {
-  
-  encoder = new Encoders()
   display = new Display()
-  timer t(0, 1 s)
+  encoder = new Encoders()
   
+  left_calc = new AngleToDistance()
+  right_calc = new AngleToDistance()
+
+  timer t(0, 1 s)
+
   reaction(t) -> encoder.trigger {=
     lf_set(encoder.trigger, true);
   =}
 
-  reaction(encoder.left) -> display.line1 {=
+  reaction(startup) -> display.line0 {=
+    lf_set(display.line0, "DISTANCE (cm):");
+  =}
+
+  encoder.left -> left_calc.degrees
+  encoder.right -> right_calc.degrees
+
+  reaction(left_calc.distance) -> display.line1 {=
     static char buf[17];
-    float distance = encoder.left->value / WHEEL_CONSTANT;
-    snprintf(buf, 17, "L: %10.2f", distance);
+    snprintf(buf, 17, "L: %10.4f", left_calc.distance->value);
     lf_set(display.line1, buf);
   =}
 
-  reaction(encoder.right) -> display.line2 {=
+  reaction(right_calc.distance) -> display.line2 {=
     static char buf[17];
-    float distance = encoder.right->value / WHEEL_CONSTANT;
-    snprintf(buf, 17, "R: %10.2f", distance);
+    snprintf(buf, 17, "R: %10.4f", right_calc.distance->value);
     lf_set(display.line2, buf);
   =}
-
 }
