@@ -1,0 +1,88 @@
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true
+}
+
+import Motors from "lib/Motors.lf"
+import Encoders from "lib/Encoders.lf"
+import GyroAngle from "lib/IMU.lf"
+
+preamble {=
+  #include <math.h>
+  #define PI 3.14159265
+  #define WHEEL_DIAMETER 0.03175
+  #define TARGET_DISTANCE 0.05
+  #define TARGET_ANGLE 90.0
+=}
+
+reactor AngleToDistance {
+  input degrees: int32_t
+  output distance: float
+  reaction(degrees) -> distance {=
+    float dist = (degrees->value / 360.0) * PI * WHEEL_DIAMETER;
+    lf_set(distance, dist);
+  =}
+}
+
+main reactor {
+  timer t(0, 10 ms)
+  
+  motors = new Motors()
+  encoders = new Encoders()
+  gyro = new GyroAngle()
+  
+  left_calc = new AngleToDistance()
+  encoders.left -> left_calc.degrees
+
+  state start_distance: float = 0.0
+  state start_angle: float = 0.0
+  state driving_init: bool = false
+  state turning_init: bool = false
+
+  reaction(t) -> encoders.trigger, gyro.trigger {=
+    lf_set(encoders.trigger, true);
+    lf_set(gyro.trigger, true);
+  =}
+
+  initial mode DRIVING {
+    reaction(left_calc.distance) -> TURNING, motors.left_power, motors.right_power {=
+      if (!self->driving_init) {
+        self->start_distance = left_calc.distance->value;
+        self->driving_init = true;
+      }
+      
+      if (fabs(left_calc.distance->value - self->start_distance) >= TARGET_DISTANCE) {
+        self->driving_init = false;
+        lf_set(motors.left_power, 0.0f);
+        lf_set(motors.right_power, 0.0f);
+        lf_set_mode(TURNING);
+      } else {
+        lf_set(motors.left_power, 0.1f);
+        lf_set(motors.right_power, 0.1f);
+      }
+    =}
+  }
+
+  mode TURNING {
+    reaction(gyro.z) -> DRIVING, motors.left_power, motors.right_power {=
+      if (!self->turning_init) {
+        self->start_angle = gyro.z->value;
+        self->turning_init = true;
+      }
+
+      if (fabs(gyro.z->value - self->start_angle) >= TARGET_ANGLE) {
+        self->turning_init = false;
+        lf_set(motors.left_power, 0.0f);
+        lf_set(motors.right_power, 0.0f);
+        lf_set_mode(DRIVING);
+      } else {
+        // Point turn: left motor backward, right motor forward
+        lf_set(motors.left_power, -0.1f);
+        lf_set(motors.right_power, 0.1f);
+      }
+    =}
+  }
+}
