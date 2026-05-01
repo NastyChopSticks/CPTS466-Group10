@@ -14,13 +14,14 @@ preamble {=
   #include <math.h>
   #define PI 3.14159265
   #define WHEEL_DIAMETER 0.03175
-  #define TARGET_DISTANCE 0.05
+  #define TARGET_DISTANCE .5
   #define TARGET_ANGLE 90.0
 =}
 
 reactor AngleToDistance {
   input degrees: int32_t
   output distance: float
+
   reaction(degrees) -> distance {=
     float dist = (degrees->value / 360.0) * PI * WHEEL_DIAMETER;
     lf_set(distance, dist);
@@ -29,11 +30,11 @@ reactor AngleToDistance {
 
 main reactor {
   timer t(0, 10 ms)
-  
+
   motors = new Motors()
   encoders = new Encoders()
   gyro = new GyroAngle()
-  
+
   left_calc = new AngleToDistance()
   encoders.left -> left_calc.degrees
 
@@ -48,12 +49,12 @@ main reactor {
   =}
 
   initial mode DRIVING {
-    reaction(left_calc.distance) -> TURNING, motors.left_power, motors.right_power {=
+    reaction(left_calc.distance) -> reset(TURNING), motors.left_power, motors.right_power {=
       if (!self->driving_init) {
         self->start_distance = left_calc.distance->value;
         self->driving_init = true;
       }
-      
+
       if (fabs(left_calc.distance->value - self->start_distance) >= TARGET_DISTANCE) {
         self->driving_init = false;
         lf_set(motors.left_power, 0.0f);
@@ -67,7 +68,7 @@ main reactor {
   }
 
   mode TURNING {
-    reaction(gyro.z) -> DRIVING, motors.left_power, motors.right_power {=
+    reaction(gyro.z) -> reset(DRIVING), motors.left_power, motors.right_power {=
       if (!self->turning_init) {
         self->start_angle = gyro.z->value;
         self->turning_init = true;
